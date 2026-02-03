@@ -1,0 +1,24 @@
+# config.yaml
+# Configuration for Indian Parliamentary Proceedings NLP Analysis System
+
+# Project Metadata
+project:
+  name: "Indian Parliamentary Proceedings NLP Analysis"
+  version: "1.0.0"
+  authors:
+    - "Devadatta Mahesh Pokharanakar"
+    - "Chilaka Sri Krishna Sai"
+    - "Vaddi Govardhan"
+  description: "NLP pipeline for analyzing Indian parliamentary proceedings"
+
+# FastAPI Server Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  debug: true
+  reload: true
+  workers: 1
+  cors_origins:
+    - "http://localhost:8000"
+    - "http://127.0.0.1:8000"
+  
