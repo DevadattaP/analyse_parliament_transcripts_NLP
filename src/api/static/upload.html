@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/images/favicon.ico"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📤 Upload Document - Parliamentary NLP Analysis</title>
+    <link rel="stylesheet" href="/static/css/index.css">
+    <link rel="stylesheet" href="/static/css/upload.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="back-btn">← Back to Home</a>
+            <h1>📤 Upload Parliamentary Document</h1>
+            <p class="tagline">Upload PDF, DOC, or TXT files for NLP analysis</p>
+        </div>
+    </header>
+
+    <div class="container upload-container">
+        <div class="upload-card">
+            <h2>Upload Document</h2>
+            <p>Select a parliamentary document for analysis. The system will extract speakers, topics, entities, and generate summaries.</p>
+            
+            <form id="uploadForm" class="upload-form">
+                
+                <div class="form-group">
+                    <label>Upload File *</label>
+                    <div class="file-drop-area" id="dropArea">
+                        <div>
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+                            <p><strong>Click to select file</strong> or drag and drop</p>
+                            <p>Supported formats: PDF, DOC, DOCX, TXT</p>
+                            <p>Max file size: 50MB</p>
+                        </div>
+                        <input type="file" id="fileInput" name="file" accept=".pdf,.doc,.docx,.txt" required>
+                    </div>
+                    <div class="selected-file" id="selectedFile">
+                        <div class="file-info">
+                            <span class="file-icon">📄</span>
+                            <div>
+                                <strong id="fileName"></strong>
+                                <p id="fileSize"></p>
+                            </div>
+                        </div>
+                        <button type="button" class="remove-file" id="removeFile">×</button>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn" disabled>
+                    Upload and Analyze Document
+                </button>
+            </form>
+            
+            <div class="progress-container" id="progressContainer">
+                <h3>Uploading & Processing...</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p id="progressText">Preparing upload...</p>
+            </div>
+            
+            <div class="result-container" id="resultContainer">
+                <h3 class="result-title" id="resultTitle"></h3>
+                <div id="resultContent"></div>
+                <div id="resultActions" style="margin-top: 1rem;"></div>
+            </div>
+        </div>
+        
+        <div class="api-info">
+            <h4>API Information</h4>
+            <p>This upload uses the <code>POST /upload</code> API endpoint.</p>
+            <p>After upload, the document is processed asynchronously. You can track the progress and view results through the API.</p>
+            <p><strong>Processing tasks include:</strong> Speaker identification, Topic modeling, Named entity recognition, Sentiment analysis, and Summarization.</p>
+        </div>
+    </div>
+
+    <script src="/static/js/upload.js"></script>
+</body>
+</html>

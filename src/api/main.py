@@ -6,6 +6,8 @@ import logging
 from fastapi.responses import FileResponse
 from pathlib import Path
 from .config import config
+from .routes import upload
+from .middlewares.no_cache import NoCacheMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -34,10 +36,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(NoCacheMiddleware)
+
 # Mount static files
 static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    app.mount("/static", StaticFiles(directory=static_dir, check_dir=not config.get("api.debug", False)), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -73,6 +77,8 @@ async def global_exception_handler(request: Request, exc: Exception):
             "path": request.url.path
         }
     )
+
+app.include_router(upload.router)
 
 if __name__ == "__main__":
     import uvicorn
