@@ -2,3 +2,10 @@
 fastapi==0.127.0
 uvicorn==0.40.0
 python-multipart==0.0.22
+
+# PDF Extraction Libraries
+pdfplumber==0.11.9
+pypdf2==3.0.1
+
+# NLP Libraries
+langdetect==1.0.9
