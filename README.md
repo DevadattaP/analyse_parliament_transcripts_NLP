@@ -1,44 +1,97 @@
-# Indian Parliamentary Proceedings NLP Analysis
+# 🇮🇳 Indian Parliamentary Proceedings – Ministry Classification & Analytics
 
 ## 📋 Project Description
 
-This project aims to analyze Indian parliamentary proceedings transcripts using Natural Language Processing (NLP) techniques. The system processes parliamentary session documents (budget speeches, bill introductions, Q&A sessions, debates, ministerial statements) to extract structured information including speaker identification, topic detection, named entity recognition, sentiment analysis, and automated summarization.
+This project analyzes Indian parliamentary proceedings using Natural Language Processing (NLP).
+The main objective is to automatically identify which ministry or department is being discussed in each paragraph of a parliamentary transcript.
 
-## 🎯 Key Features
+The system processes parliamentary session documents such as:
 
-- **PDF Processing:** Convert parliamentary PDFs to structured text
-- **Speaker Identification:** Detect speakers, roles, parties, and ministries
-- **Named Entity Recognition:** Extract people, places, schemes, ministries, bills, and monetary values
-- **Topic Modeling:** Segment discussions into policy areas (agriculture, taxation, etc.)
-- **Sentiment Analysis:** Classify statements into categories (Appreciate, Neutral, Call for Action, etc.)
-- **Summarization:** Generate topic-wise and speaker-wise summaries
-- **Visualization:** Produce timelines, statistics, and analytical dashboards
+- Budget speeches
+- Bill discussions
+- Question–Answer sessions
+- Ministerial statements
+- General debates
+
+It converts long unstructured PDF documents into structured data and generates ministry-wise statistics.
+
+## 🎯 Core Objectives
+
+- Extract clean text from parliamentary PDFs
+- Identify speaker segments
+- Perform Named Entity Recognition (NER)
+- Classify each paragraph into a relevant ministry
+- Generate ministry distribution across the document
+- Produce speaker-wise and time-based ministry statistics
+- Provide structured JSON outputs and visualizations
+
+## 🧠 Main NLP Task
+
+We model ministry detection as a paragraph-level multi-class classification problem.
+Each paragraph is assigned to one ministry such as:
+
+- Ministry of Finance
+- Ministry of Textiles
+- Ministry of Mines
+- Ministry of Electronics and IT
+- Ministry of Agriculture
+- etc.
+
+## ⚙️ System Architecture
+
+The system follows a document-processing pipeline:
+
+1. Preprocessing
+    - Convert PDF to text
+    - Remove headers, footers, formatting noise
+    - Segment into speaker turns and paragraphs
+
+2. Speaker Identification
+    - Rule-based detection of speaker names and roles
+
+3. Named Entity Recognition
+    - Extract ministries, schemes, organizations, locations, and monetary values
+
+4. Ministry Classification
+    - Baseline: Keyword-based ministry scoring
+    - Main Model: Embedding-based semantic similarity between paragraph and official ministry descriptions
+    - Optional: Supervised classifier (if annotated data available)
+
+5. Analytics
+    - Ministry distribution across document
+    - Speaker-wise ministry coverage
+    - Time-based statistics
+    - Structured JSON output
+    - Visual charts
 
 ## Project Structure
 
 ```bash
 parliament-nlp-analysis/
-├── documentation/         # Project documentation and reports
+├── documentation/         # Reports and project documentation
 ├── data/
 │   ├── raw/               # Original PDF documents
-│   ├── processed/         # Processed text files
-│   ├── annotated/         # Manually annotated datasets
-│   └── outputs/           # Generated outputs (JSON, visualizations)
+│   ├── processed/         # Cleaned text files
+│   ├── annotated/         # Manually labeled paragraphs (if used)
+│   ├── ministry_profiles/ # Official ministry descriptions
+│   ├── references/        # Reference documents for vocab, context, etc
+│   ├── vocabulary/        # Vocabulary for validating parliamentary terms
+│   └── outputs/           # JSON outputs and visualizations
 ├── src/
-│   ├── preprocessing/     # PDF to text conversion, cleaning
-│   ├── speaker_id/        # Speaker identification models
+│   ├── preprocessing/     # PDF parsing and cleaning
+│   ├── speaker_id/        # Speaker detection
 │   ├── ner/               # Named Entity Recognition
-│   ├── topic_modeling/    # Topic segmentation and classification
-│   ├── sentiment/         # Sentiment and stance analysis
-│   ├── summarization/     # Extractive and abstractive summarization
-│   ├── visualization/     # Data visualization modules
-│   └── api/               # FastAPI web service
-├── notebooks/             # Jupyter notebooks for experimentation
-├── tests/                 # Unit and integration tests
-├── models/                # Saved models and checkpoints
-├── requirements.txt       # Python dependencies
-├── config.yaml            # Configuration file
-└── README.md              # This file
+│   ├── ministry_classifier/  # Ministry classification models
+│   ├── analytics/         # Statistics and distribution analysis
+│   ├── visualization/     # Charts and timelines
+│   ├── vocabulary/        # Building parliamentary vocabulary
+│   └── api/               # FastAPI service
+├── notebooks/             # Experiments and analysis
+├── tests/                 # Unit tests (if any)
+├── models/                # Saved embeddings and classifiers
+├── requirements.txt
+├── config.yaml
+└── README.md
 ```
 
 ## ⚙️ Installation & Setup
@@ -71,7 +124,7 @@ pip install -r requirements.txt
 
 ## 🚀 Quick Start
 
-### Start Web API
+### Start Web API Server
 
 ```bash
 uvicorn src.api.main:app --reload
@@ -83,18 +136,11 @@ API documentation is available at <http://localhost:8000/docs>
 
 ## 📊 Expected Outputs
 
-- **Structured JSON:** Processed data in machine-readable format
-- **Summary Reports:** Topic-wise and speaker-wise summaries
-- **Visual Analytics:** Charts, timelines, and statistical overviews
-- **API Endpoints:** RESTful services for programmatic access
-
-## 🧪 Testing
-
-Run unit tests using pytest:
-
-```bash
-pytest tests/
-```
+- Structured JSON with paragraph-level ministry labels
+- Ministry frequency distribution
+- Speaker-wise ministry statistics
+- Time-based ministry coverage
+- Visual charts and summary reports
 
 ## 🤝 Contributing
 
