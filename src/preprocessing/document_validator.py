@@ -1,153 +1,104 @@
-import re
-from typing import Dict, Any, Optional
-from datetime import datetime
+from typing import Dict, Any, List
 import langdetect
 from langdetect import DetectorFactory
+from src.preprocessing.pdf_extractor import PDFExtractor
+import json
 
 class DocumentValidator:
     """Validates and extracts metadata from parliamentary documents"""
     
-    def __init__(self):
-        DetectorFactory.seed = 0
+    def __init__(self, vocab_path: str = "data/vocabulary/parliament_vocab.txt", vocab_threshold: int = 5):
+        DetectorFactory.seed = 42
+        self.vocab_path = vocab_path
+        self.vocab_threshold = vocab_threshold
+        self._load_parliament_vocab()
         
-    def validate_document(self, text: str, filename: str) -> Dict[str, Any]:
+    def _load_parliament_vocab(self):
+        """Load parliamentary vocabulary for content validation"""
+        with open(self.vocab_path, "r", encoding="utf-8") as f:
+            self.vocab = [line.strip().lower() for line in f.readlines()]
+            
+    def validate_document(self, text: str) -> Dict[str, Any]:
         """Main validation pipeline"""
         results = {
             'is_valid': False,
+            'is_english': False,
             'validation_errors': [],
-            'metadata': {}
+            'vocab_size': len(self.vocab),
+            'required_vocab_matches': self.vocab_threshold,
         }
-        
-        # 1. Language detection
-        language = self.detect_language(text)
-        if language != 'en':
-            results['validation_errors'].append(f"Document not in English ({language})")
-        
-        # 2. Parliament content check
-        is_parliament = self.is_parliament_content(text)
-        if not is_parliament:
-            results['validation_errors'].append("Document doesn't appear to be parliamentary content")
-        
-        # 3. Extract metadata
-        metadata = self.extract_metadata(text, filename)
-        results['metadata'] = metadata
-        
-        # 4. Determine if valid
-        results['is_valid'] = (language == 'en' and is_parliament and 
-                             metadata.get('house') is not None)
+        try:
+            # 1. Language detection
+            language = self.detect_language(text)
+            if language != 'en':
+                results['validation_errors'].append(f"Document not in English but in {language}")
+            else:
+                results['is_english'] = True
+            
+            # 2. Parliament content check (with improved method)
+            is_parliament, matches = self.is_parliament_content(text, threshold=self.vocab_threshold)
+            confidence = len(matches) / len(self.vocab) if self.vocab else 0
+            if not is_parliament:
+                results['validation_errors'].append(
+                    f"Document doesn't appear to be parliamentary content (confidence: {confidence:.2f})"
+                )
+            # Add confidence score
+            results['parliament_confidence'] = confidence
+            
+            results['matched_vocab_terms'] = matches
+                    
+            # 4. Determine if valid (more lenient criteria)
+            results['is_valid'] = language == 'en' and is_parliament        
+        except Exception as e:
+            results['validation_errors'].append(f"Error during validation: {str(e)}")
         
         return results
     
-    def detect_language(self, text: str, sample_size=1000) -> str:
-        """Detect document language"""
-        sample = text[:sample_size]
+    def detect_language(self, text: str, sample_size=2000) -> str:
+        """Detect document language with better sampling"""
+        # Take samples from beginning, middle, and end
+        text_length = len(text)
+        if text_length > sample_size * 3:
+            samples = [
+                text[:sample_size],
+                text[text_length//2 - sample_size//2:text_length//2 + sample_size//2],
+                text[-sample_size:]
+            ]
+            sample = ' '.join(samples)
+        else:
+            sample = text
+        
         try:
             return langdetect.detect(sample)
         except:
             return "unknown"
     
-    def is_parliament_content(self, text: str, threshold=0.005) -> bool:
-        """Check if text contains parliamentary content"""
-        parliament_keywords = [
-            'parliament', 'loksabha', 'rajyasabha', 'honourable',
-            'minister', 'member', 'speaker', 'debate', 'session',
-            'question', 'answer', 'bill', 'act', 'budget', 'motion',
-            'resolution', 'committee', 'parliamentary', 'proceeding'
-        ]
-        
+    def is_parliament_content(self, text: str, threshold: int = 5) -> tuple[bool, List[str]]:
+        """Check if text contains parliamentary content with confidence score"""
         text_lower = text.lower()
-        words = text_lower.split()
-        if not words:
-            return False
-            
-        keyword_count = sum(1 for keyword in parliament_keywords 
-                          if keyword in text_lower)
-        keyword_density = keyword_count / len(words)
+        matches = [term for term in self.vocab if term.lower() in text_lower]
+        return len(matches)>= threshold, matches
         
-        return keyword_density > threshold
-    
-    def extract_metadata(self, text: str, filename: str) -> Dict[str, Any]:
-        """Extract metadata from document"""
-        metadata = {
-            'house': None,
-            'doc_type': None,
-            'date': None,
-            'source_file': filename
-        }
-        
-        # Extract house
-        metadata['house'] = self.extract_house(text)
-        
-        # Extract document type
-        metadata['doc_type'] = self.extract_document_type(text)
-        
-        # Extract date
-        metadata['date'] = self.extract_date(text)
-        
-        return metadata
-    
-    def extract_house(self, text: str) -> Optional[str]:
-        """Extract parliament house from text"""
-        text_lower = text.lower()
-        
-        if any(term in text_lower for term in ['lok sabha', 'house of the people']):
-            return 'Lok Sabha'
-        elif any(term in text_lower for term in ['rajya sabha', 'council of states']):
-            return 'Rajya Sabha'
-        
-        return None
-    
-    def extract_document_type(self, text: str) -> str:
-        """Extract document type"""
-        text_lower = text.lower()
-        
-        doc_types = {
-            'budget': ['budget', 'finance bill', 'appropriation'],
-            'debate': ['debate', 'discussion', 'motion'],
-            'qna': ['question', 'answer', 'starred', 'unstarred'],
-            'statement': ['statement', 'ministerial statement'],
-            'bill': ['bill', 'act', 'legislation'],
-            'other': []  # Default
-        }
-        
-        for doc_type, keywords in doc_types.items():
-            if any(keyword in text_lower for keyword in keywords):
-                return doc_type
-        
-        return 'other'
-    
-    def extract_date(self, text: str) -> Optional[str]:
-        """Extract date from document"""
-        # Look for date patterns in first 500 chars
-        sample = text[:500]
-        
-        date_patterns = [
-            r'\d{1,2}[-/]\d{1,2}[-/]\d{2,4}',
-            r'\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}',
-            r'(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}'
-        ]
-        
-        for pattern in date_patterns:
-            match = re.search(pattern, sample, re.IGNORECASE)
-            if match:
-                try:
-                    # Try to parse the date
-                    date_str = match.group()
-                    # Add date parsing logic here
-                    return date_str
-                except:
-                    continue
-        
-        return None
-    
+
 if __name__ == "__main__":
-    # Example usage
-    from src.preprocessing.pdf_extractor import *
+    # Test with the provided PDF
+    
     validator = DocumentValidator()
     file_name = "test.pdf"
     file_path = f"data/uploads/{file_name}"
-    print(datetime.now())
-    text = extract_text_from_pdf_file(file_path)
-    results = validator.validate_document(text, file_path)
-    print(results)
-    print(datetime.now())
+    
+    print(f"Processing: {file_path}")
+    print("-" * 50)
+    
+    # Extract text
+    extractor = PDFExtractor()
+    result = extractor.extract(file_path)
+    text = "\n\n".join([seg["paragraph"] for seg in result["segments"]])
+    
+    # Validate
+    results = validator.validate_document(text)
+    
+    # Print results nicely
+    print("VALIDATION RESULTS:")
+    print(json.dumps(results, indent=4))
+    
