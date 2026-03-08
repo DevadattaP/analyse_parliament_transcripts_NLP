@@ -9,3 +9,4 @@ pypdf2==3.0.1
 
 # NLP Libraries
 langdetect==1.0.9
+sentence-transformers==5.2.3
