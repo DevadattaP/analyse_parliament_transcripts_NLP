@@ -122,8 +122,21 @@ class PDFExtractor:
         current_paragraph_lines = []
 
         speaker_pattern = re.compile(
-            r"^(SHRI|SHRIMATI|SMT\.|DR\.|HON\. SPEAKER|THE SPEAKER|MINISTER OF|THE PRIME MINISTER)[^:]*:",
-            re.IGNORECASE
+            r"""^(
+                SHRI|
+                SHRIMATI|
+                SMT\.|
+                DR\.|
+                HON\.?\s*SPEAKER|
+                THE\s+SPEAKER|
+                THE\s+MINISTER|
+                MINISTER|
+                THE\s+PRIME\s+MINISTER|
+                PRIME\s+MINISTER|
+                THE\s+PRESIDENT|
+                PRESIDENT
+            ).*?:$""",
+            re.IGNORECASE | re.VERBOSE
         )
 
         def flush_segment():
@@ -141,9 +154,16 @@ class PDFExtractor:
 
                 interruption_count = len(interruption_matches)
 
-                # Remove interruption markers from text (optional)
+                # Remove interruption markers from text (before or after there may or may not be 3 dots, may or may not be space)
                 paragraph_text = re.sub(
-                    r"\.*\(?Interruptions\)?",
+                    r'…?\s*\.?\s*\(?\s*Interruptions\s*\)?\s*\.?',
+                    "",
+                    paragraph_text,
+                    flags=re.IGNORECASE
+                ).strip()
+                
+                paragraph_text = re.sub(
+                    r'…?\s*\.?\s*\(?\s*Interruption\s*\)?\s*\.?',
                     "",
                     paragraph_text,
                     flags=re.IGNORECASE
@@ -151,6 +171,13 @@ class PDFExtractor:
                 
                 # remove [Translation], [English], etc
                 paragraph_text = re.sub(r"\[[A-Za-z\s]*\]", "", paragraph_text)
+                
+                # Remove bullet lists like "1) ...", "a) ..."
+                paragraph_text = re.sub(r'\b\d+\)', '', paragraph_text)
+                paragraph_text = re.sub(r'\b[a-zA-Z]\)', '', paragraph_text)
+
+                # Remove unicode junk again (safety)
+                paragraph_text = re.sub(r'[\uf000-\uf0ff]', '', paragraph_text)
 
                 segments.append({
                     "speaker": current_speaker,
@@ -161,54 +188,237 @@ class PDFExtractor:
 
                 current_paragraph_lines = []
 
-        for line in lines:
+        def append_paragraph_lines(line: str):
+            nonlocal current_paragraph_lines
+            # Paragraph break conditions
+            if current_paragraph_lines:
+                prev_line = current_paragraph_lines[-1]
+
+                paragraph_break = False
+
+                # Rule 1: Previous line ended sentence
+                if re.search(r'[.!?]$', prev_line):
+                    if re.match(r'^[A-Z]', line):
+                        paragraph_break = True
+
+                # Rule 3: ALL CAPS heading
+                if line.isupper() and len(line.split()) < 10:
+                    paragraph_break = True
+
+                if paragraph_break:
+                    flush_segment()
+
+            current_paragraph_lines.append(line)
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
 
             # --- Detect numeric time marker ---
             numeric_match = re.match(r"^\d{1,2}\.\d{2}\s*hrs$", line, re.IGNORECASE)
 
             if numeric_match:
-                flush_segment()
+                # flush_segment()
                 current_time = numeric_match.group(0)
+                i += 1
                 continue
 
             # --- Detect written time (session start) ---
             written_time = self._extract_written_time(line)
             if written_time:
-                flush_segment()
+                # flush_segment()
                 current_time = written_time
-                current_paragraph_lines.append(line)  # keep original text
+                append_paragraph_lines(line)  # keep original text
+                i += 1
+                continue
+            
+            # --- HARD BREAK: Language markers ---
+            if re.match(r'\[(Translation|English)\]', line, re.IGNORECASE):
+                flush_segment()
+                i += 1
                 continue
 
             # --- Detect speaker ---
-            if speaker_pattern.match(line):
+            
+            minister_full = re.match(
+                r"^THE\s+MINISTER.*\(([^)]+)\)\s*:\s*(.*)",
+                line,
+                re.IGNORECASE
+            )
+
+            if minister_full:
                 flush_segment()
 
-                # Extract only part before colon
-                speaker_name = line.split(":")[0].strip()
-                current_speaker = speaker_name
+                current_speaker = minister_full.group(1).strip()
+                speech_text = minister_full.group(2).strip()
 
-                # If speech continues on same line after colon
-                remainder = line.split(":", 1)[1].strip()
-                if remainder:
-                    current_paragraph_lines.append(remainder)
+                if speech_text:
+                    append_paragraph_lines(speech_text)
 
+                i += 1
                 continue
             
+            # --- Detect multi-line minister speaker ---
+            if (
+                i + 1 < len(lines)
+                and re.match(r"^THE\s+MINISTER", lines[i], re.IGNORECASE)
+                and re.match(r"^\([^)]*\):", lines[i + 1])
+            ):
+                flush_segment()
+
+                # Extract name and speech from second line
+                second_line = lines[i + 1]
+
+                name_match = re.match(r"^\(([^)]*)\):\s*(.*)", second_line)
+                if name_match:
+                    current_speaker = name_match.group(1).strip()
+                    speech_text = name_match.group(2).strip()
+
+                    if speech_text:
+                        append_paragraph_lines(speech_text)
+
+                i += 2
+                continue
+            
+            # --- Detect split speaker name ---
+            if (
+                i + 1 < len(lines)
+                and re.match(r"""^(
+                             SHRI|
+                            SHRIMATI|
+                            SMT\.|
+                            DR\.|
+                            HON\.?\s*SPEAKER|
+                            THE\s+SPEAKER|
+                            THE\s+MINISTER|
+                            MINISTER|
+                            THE\s+PRIME\s+MINISTER|
+                            PRIME\s+MINISTER|
+                            THE\s+PRESIDENT|
+                            PRESIDENT
+                            )""", lines[i], re.IGNORECASE)
+                and re.match(r"^\(.*\):$", lines[i + 1])
+            ):
+                flush_segment()
+
+                name = lines[i].strip()
+                constituency = lines[i + 1].strip()
+
+                current_speaker = name + " " + constituency.strip("():")
+
+                i += 2
+                continue
+            
+            # --- Detect speaker ---
+            # --- Detect speaker lines like "SHRI XYZ: text" ---
+            speaker_line_match = re.match(
+                r"""^(
+                    SHRI|
+                    SHRIMATI|
+                    SMT\.|
+                    DR\.|
+                    HON\.?\s*SPEAKER|
+                    THE\s+SPEAKER|
+                    THE\s+MINISTER|
+                    MINISTER|
+                    THE\s+PRIME\s+MINISTER|
+                    PRIME\s+MINISTER|
+                    THE\s+PRESIDENT|
+                    PRESIDENT
+                    )(.*?):\s*(.*)""",
+                line,
+                re.IGNORECASE
+            )
+
+            if speaker_line_match:
+                flush_segment()
+
+                current_speaker = (speaker_line_match.group(1) + speaker_line_match.group(2)).strip()
+
+                speech_text = speaker_line_match.group(3).strip()
+                if speech_text:
+                    append_paragraph_lines(speech_text)
+
+                i += 1
+                continue
+            
+            speaker_match = re.match(r"^(.*?):\s*(.*)", line)
+
+            if speaker_match:
+                possible_speaker = speaker_match.group(1).strip()
+
+                if speaker_pattern.match(possible_speaker + ":"):
+                    flush_segment()
+
+                    current_speaker = possible_speaker
+
+                    speech_text = speaker_match.group(2).strip()
+                    if speech_text:
+                        append_paragraph_lines(speech_text)
+
+                    i += 1
+                    continue
+                
+            speaker_line_match = re.match(
+                r"""^((
+                SHRI|
+                SHRIMATI|
+                SMT\.|
+                DR\.|
+                HON\.?\s*SPEAKER|
+                THE\s+SPEAKER|
+                THE\s+MINISTER|
+                MINISTER|
+                THE\s+PRIME\s+MINISTER|
+                PRIME\s+MINISTER|
+                THE\s+PRESIDENT|
+                PRESIDENT
+                )[^:]*):\s*(.*)""",
+                line,
+                re.IGNORECASE
+            )
+
+            if speaker_line_match:
+                flush_segment()
+
+                current_speaker = speaker_line_match.group(1).strip()
+
+                speech_text = speaker_line_match.group(3).strip()
+                if speech_text:
+                    append_paragraph_lines(speech_text)
+
+                i += 1
+                continue
+                            
             # Detect bracketed speaker line
             bracket_speaker = re.match(r"\[(.*?) in the Chair\]", line, re.IGNORECASE)
             if bracket_speaker:
                 current_speaker = bracket_speaker.group(1).strip()
+                i += 1
                 continue
             
             # Skip obvious junk lines
             if line.startswith("C O N T E N T S"):
+                i += 1
                 continue
 
             if "LOK SABHA SECRETARIAT" in line:
+                i += 1
+                continue
+            
+            # Skip narrative procedural lines
+            if re.match(r'At this stage', line, re.IGNORECASE):
+                i += 1
+                # skip next lines until interruption or blank
+                while i < len(lines) and not re.search(r'Interruptions', lines[i], re.IGNORECASE):
+                    i += 1
                 continue
             
             # --- Otherwise normal content ---
-            current_paragraph_lines.append(line)
+            append_paragraph_lines(line)
+            
+            i += 1
+            print(f"Processed line {i}/{len(lines)}", end="\r")
 
         # Flush final segment
         flush_segment()
@@ -411,6 +621,17 @@ class PDFExtractor:
             # Remove lines that are only special characters (3 or more)
             if re.match(r'^[_\-=.*]{3,}$', line):
                 continue
+            
+            # Remove "Placed in Library..." and similar procedural lines
+            if re.search(r'Placed in Library', line, re.IGNORECASE):
+                continue
+
+            if re.search(r'Laid on the Table', line, re.IGNORECASE):
+                continue
+
+            # Remove LT reference lines
+            if re.search(r'See No\. LT', line, re.IGNORECASE):
+                continue
 
             cleaned_lines.append(line)
 
@@ -439,14 +660,18 @@ class PDFExtractor:
         # Replace 3+ consecutive special chars with single space
         text = re.sub(r'([_\-=*\.])\1{2,}', ' ', text)
         
-        # Remove private-use Unicode glyphs (common in PDFs)
-        text = re.sub(r'[\uf000-\uf8ff]', '', text)
+        # Remove ellipsis characters
+        text = re.sub(r'…', ' ', text)
         
-        # Replace unicode ellipsis with space
-        text = text.replace("…", " ")
-        
-        # Remove standalone symbol tokens
-        text = re.sub(r'\s*[\*\u2022\u25CF\u25AA]+\s*', ' ', text)
+        # Remove unicode junk like \uf02a
+        text = re.sub(r'[\uf000-\uf0ff]', '', text)
+
+        # Remove bullet patterns a) b) c)
+        text = re.sub(r'\b[a-zA-Z]\)', '', text)
+
+        # Remove inline "Placed in Library..." fragments
+        text = re.sub(r'Placed in Library*?LT\s*\d+.*?\.', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'Laid on the Table*?LT\s*\d+.*?\.', '', text, flags=re.IGNORECASE)
         
         return text.strip()
     
