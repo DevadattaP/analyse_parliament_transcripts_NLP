@@ -45,13 +45,50 @@ def split_ministries(text):
         end = matches[i+1].start(1) if i+1 < len(matches) else len(text)
 
         ministry_text = text[start:end].strip()
-        ministries[ministry_name] = ministry_text
+        
+        # CLEAN TEXT HERE
+        full_text = clean_pdf_text(ministry_text)
+        
+        ministries[ministry_name] = full_text
 
     return ministries
 
 
 # -----------------------------------
-# 3. Save Each Ministry
+# 3. Clean Each Ministry's Text
+# -----------------------------------
+def clean_pdf_text(text):
+    """
+    Fix line breaks, bullets, spacing issues from PDF extraction
+    """
+
+    # Remove weird bullet characters
+    text = re.sub(r"[\uf000-\uf0ff]", "", text)
+    
+    # Remove numbered list patterns (e.g., "1. ", "2. ", etc.)
+    text = re.sub(r"^\s*\d+\.\s+", "", text, flags=re.MULTILINE)
+    
+    # remove all special characters like (), [, ], {, }, ;, :, &
+    text = re.sub(r"[()\[\]{};:&,]", "", text)
+
+    # Remove multiple spaces
+    text = re.sub(r"[ \t]+", " ", text)
+
+    # Fix broken lines inside sentences
+    # Join lines where next line starts with lowercase
+    text = re.sub(r"\n([a-z])", r" ", text)
+
+    # Join lines ending without punctuation
+    text = re.sub(r"(?<![.\n])\n(?!\n)", " ", text)
+
+    # Remove extra newlines
+    text = re.sub(r"\n\s*\n", "\n\n", text)
+
+    return text.strip()
+
+
+# -----------------------------------
+# 4. Save Each Ministry
 # -----------------------------------
 def save_ministries(ministries, output_dir):
     Path(output_dir).mkdir(parents=True, exist_ok=True)
