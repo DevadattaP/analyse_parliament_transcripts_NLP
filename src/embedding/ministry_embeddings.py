@@ -80,8 +80,16 @@ def clean_text(text, stopwords=None):
 
     if stopwords:
         words = [w for w in words if w not in stopwords and len(w) > 2]
+    
+    # remove duplicates while preserving order
+    seen = set()
+    unique_words = []
+    for w in words:
+        if w not in seen:
+            seen.add(w)
+            unique_words.append(w)
 
-    return " ".join(words)
+    return " ".join(unique_words)
 
 
 # --------------------------------
