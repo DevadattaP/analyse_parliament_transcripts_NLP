@@ -10,20 +10,21 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 # --------------------------------
 MINISTRY_DIR = "data/ministry_profiles"
 OUTPUT_FILE = "data/embeddings/ministry_embeddings1.json"
-STOPWORD_FILE = "../data/stopwords/GBparl_stopwords-empirical.txt"
+STOPWORD_FILES = ["data/stopwords/GBparl_stopwords-empirical.txt", "data/stopwords/stopwords.txt"]
 MODEL_NAME = "all-MiniLM-L6-v2"
 CACHE_DIR = "models"
 
-def load_stopwords(custom_file):
+def load_stopwords(custom_files):
 
     stopwords = set(ENGLISH_STOP_WORDS)
 
     # load domain stopwords
-    with open(custom_file, "r", encoding="utf-8") as f:
-        for line in f:
-            word = line.strip().lower()
-            if word:
-                stopwords.add(word)
+    for custom_file in custom_files:
+        with open(custom_file, "r", encoding="utf-8") as f:
+            for line in f:
+                word = line.strip().lower()
+                if word:
+                    stopwords.add(word)
 
     return stopwords
 
@@ -99,7 +100,7 @@ def build_ministry_embeddings(ministries):
 
     model = SentenceTransformer(MODEL_NAME, cache_folder=CACHE_DIR)
 
-    stopwords = load_stopwords(STOPWORD_FILE)
+    stopwords = load_stopwords(STOPWORD_FILES)
     
     ministry_vectors = {}
 
