@@ -3,13 +3,14 @@ import re
 import json
 from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
 
 # -----------------------------------
 # CONFIG
 # -----------------------------------
 MINISTRY_DIR = "data/ministry_profiles"
-STOPWORDS_FILE = "data/stopwords/GBparl_stopwords-empirical.txt"
+STOPWORD_FILES = ["data/stopwords/GBparl_stopwords-empirical.txt", "data/stopwords/stopwords.txt"]
 OUTPUT_FILE = "data/vocabulary/ministry_tfidf_vocab.json"
 TOP_N = 100
 MAX_MINISTRY_REPEAT = 10
@@ -18,10 +19,21 @@ MAX_MINISTRY_REPEAT = 10
 # -----------------------------------
 # Load Custom Stopwords
 # -----------------------------------
-def load_custom_stopwords(stopword_file):
-    with open(stopword_file, "r", encoding="utf-8") as f:
-        stopwords = [line.strip().lower() for line in f if line.strip()]
-    return stopwords
+
+
+def load_stopwords(custom_files) -> list[str]:
+
+    stopwords = set(ENGLISH_STOP_WORDS)
+
+    # load domain stopwords
+    for custom_file in custom_files:
+        with open(custom_file, "r", encoding="utf-8") as f:
+            for line in f:
+                word = line.strip().lower()
+                if word:
+                    stopwords.add(word)
+
+    return list(stopwords)
 
 # -----------------------------------
 # 1. Text Cleaning Function
@@ -148,7 +160,7 @@ def save_vocab(vocab_dict, output_file):
 if __name__ == "__main__":
 
     print("Loading stopwords...")
-    custom_stopwords = load_custom_stopwords(STOPWORDS_FILE)
+    custom_stopwords = load_stopwords(STOPWORD_FILES)
     
     print("Loading ministry files...")
     ministries = load_ministry_files(MINISTRY_DIR, custom_stopwords)
