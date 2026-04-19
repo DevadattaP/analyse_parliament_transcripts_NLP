@@ -2,3 +2,6 @@ __pycache__
 uploads/
 ministry_profiles/
 models/
+documentation/*
+!documentation/*.pdf
+!documentation/*.tex
