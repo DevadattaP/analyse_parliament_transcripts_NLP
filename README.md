@@ -49,15 +49,12 @@ The system follows a document-processing pipeline:
 2. Speaker Identification
     - Rule-based detection of speaker names and roles
 
-3. Named Entity Recognition
-    - Extract ministries, schemes, organizations, locations, and monetary values
-
-4. Ministry Classification
+3. Ministry Classification
     - Baseline: Keyword-based ministry scoring
     - Main Model: Embedding-based semantic similarity between paragraph and official ministry descriptions
     - Optional: Supervised classifier (if annotated data available)
 
-5. Analytics
+4. Analytics
     - Ministry distribution across document
     - Speaker-wise ministry coverage
     - Time-based statistics
@@ -70,27 +67,24 @@ The system follows a document-processing pipeline:
 parliament-nlp-analysis/
 ├── documentation/         # Reports and project documentation
 ├── data/
-│   ├── raw/               # Original PDF documents
-│   ├── processed/         # Cleaned text files
-│   ├── annotated/         # Manually labeled paragraphs (if used)
 │   ├── ministry_profiles/ # Official ministry descriptions
 │   ├── references/        # Reference documents for vocab, context, etc
+│   ├── stopwords/         # stopwords txt files for cleaning
+│   ├── topic_modeling/    # input and output files for topic modeling tool (online tool by David Mimno)
 │   ├── vocabulary/        # Vocabulary for validating parliamentary terms
-│   └── outputs/           # JSON outputs and visualizations
+│   └── embeddings/        # embeddings json files for ministry classification
 ├── src/
 │   ├── preprocessing/     # PDF parsing and cleaning
-│   ├── speaker_id/        # Speaker detection
-│   ├── ner/               # Named Entity Recognition
-│   ├── ministry_classifier/  # Ministry classification models
-│   ├── analytics/         # Statistics and distribution analysis
-│   ├── visualization/     # Charts and timelines
+│   ├── embedding/         # Embedding generation for ministries, paragraphs and topics
+│   ├── classification/    # Scripts for ministry classification
+│   ├── topic_modeling/    # topic-ministry mapping and related utilities
 │   ├── vocabulary/        # Building parliamentary vocabulary
 │   └── api/               # FastAPI service
 ├── notebooks/             # Experiments and analysis
-├── tests/                 # Unit tests (if any)
 ├── models/                # Saved embeddings and classifiers
 ├── requirements.txt
 ├── config.yaml
+├── .gitignore
 └── README.md
 ```
 
@@ -141,6 +135,9 @@ API documentation is available at <http://localhost:8000/docs>
 - Speaker-wise ministry statistics
 - Time-based ministry coverage
 - Visual charts and summary reports
+
+> [!NOTE]
+> For first time it may download the sentence-transformers model which can take some time.
 
 ## 🤝 Contributing
 
