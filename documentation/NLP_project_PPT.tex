@@ -16,7 +16,7 @@
 \subtitle{A Study of Representation Methods \\ [1em] DS5601: Natural Language Processing}
 \author{142502012 --- Devadatta Mahesh Pokharanakar \\ 142502010 --- Chilaka Sri Krishna Sai \\ 142502032 --- Vaddi Govardhan}
 \institute{Department of Data Science \\ IIT Palakkad}
-\date{\today}
+\date{April 21, 2026}
 
 \begin{document}
 
@@ -220,7 +220,7 @@ $Score(d) = \sum_{w} \sum_{t} P(d|w)\cdot P(t|w)\cdot P(d|t)$
 \begin{figure}
     \centering
     \includegraphics[width=0.85\textwidth]{images/cluster-formation.png}
-    \caption{\scriptsize Consensus-based grouping of ministries}
+    \caption{\scriptsize Consensus-based grouping of ministries (Plotted using UMAP)}
 \end{figure}
 
 \vspace{0.3em}
@@ -318,7 +318,72 @@ $Score(d) = \sum_{w} \sum_{t} P(d|w)\cdot P(t|w)\cdot P(d|t)$
 \textbf{Key Insight:} \centering Better models did not solve the problem \\ --- better representations did.
 \end{frame}
 
-% Slide 13
+% Slide: Interactive Example
+\begin{frame}{Can You Predict the Ministry?}
+
+\textbf{Sample processed paragraph text:}
+\vspace{-0.9em}
+\small
+\begin{block}{}
+prime dhandhaanya krishi yojana developing agri districts programme partnership states schemes measures cover low productivity moderate crop intensity  credit enhance agricultural diversification sustainable agriculture harvest storage panchayat irrigation
+\end{block}
+
+\textbf{What our methods predicted--}
+
+\begin{table}[]
+\centering
+\small
+\begin{tabular}{@{} l l c @{}}
+\toprule
+\textbf{Method} & \textbf{Predicted Ministry} & \textbf{Score} \\
+\midrule
+TF-IDF (Lexical) & Agriculture and Farmers Welfare & 0.0680 \\
+Probabilistic & Agriculture and Farmers Welfare & 0.2049 \\
+Embedding (Full) & Cooperation & 0.0228 \\
+Embedding (Mean) & Agriculture and Farmers Welfare & 0.0249 \\
+Embedding (Top-K) & Agriculture and Farmers Welfare & 0.0238 \\
+Topic Embeddings & Consumer Affairs (F\&PD) & 0.0856 \\
+ChatGPT & Agriculture and Farmers Welfare & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{frame}
+
+% Slide: Interactive Example
+\begin{frame}{Can You Predict the Ministry?}
+
+\textbf{Sample processed paragraph text:}
+\vspace{-0.9em}
+\small
+\begin{block}{}
+post catalyst rural economy lakh offices complemented payment bank vast network dak sevaks repositioned
+\end{block}
+
+\textbf{What our methods predicted--}
+
+\begin{table}[]
+\centering
+\small
+\begin{tabular}{@{} l l c @{}}
+\toprule
+\textbf{Method} & \textbf{Predicted Ministry} & \textbf{Score} \\
+\midrule
+TF-IDF (Lexical) & Communication & 0.1212 \\
+Probabilistic & Communication & 0.4200 \\
+Embedding (Full) & Housing and Urban Affairs & 0.0223 \\
+Embedding (Mean) & Rural Development & 0.0229 \\
+Embedding (Top-K) & Communications & 0.0219 \\
+Topic Embeddings & Consumer Affairs (F\&PD) & 0.0811 \\
+ChatGPT & Communications & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation:} Even simple examples can lead to different predictions across methods.
+\end{frame}
+
+% Slide END
 \begin{frame}
 \centering
 \Huge Thank You
