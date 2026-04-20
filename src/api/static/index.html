@@ -5,91 +5,50 @@
     <link rel="icon" type="image/png" href="/static/images/favicon.ico"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏛️ Indian Parliamentary Proceedings NLP Analysis</title>
+    <title>Ministry Paragraph Classification</title>
     <link rel="stylesheet" href="/static/css/index.css">
-    <script src="/static/js/index.js"></script>
+    <script defer src="/static/js/index.js"></script>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="logo"><img class="logo-img" src="/static/images/logo.png" alt="Logo"></div>
-            <h1>Indian Parliamentary Proceedings NLP Analysis</h1>
-            <p class="tagline">Transforming parliamentary transcripts into actionable insights using AI</p>
-            <div>
-                <a href="/docs" class="btn">Explore API</a>
-                <a href="#about" class="btn btn-secondary">About Project</a>
+    <div class="page-glow"></div>
+    <main class="container">
+        <section class="hero-card">
+            <img class="logo-img" src="/static/images/logo.png" alt="Project logo">
+            <p class="eyebrow">Indian Parliamentary NLP</p>
+            <h1>Ministry Classification Per Paragraph</h1>
+            <p class="hero-copy">
+                Upload a parliamentary PDF and run seven classification variants in the backend.
+                Processing runs asynchronously and reports the task status to the UI.
+            </p>
+            <div class="hero-actions">
+                <a href="/upload/" class="btn btn-primary">Open Upload Workspace</a>
+                <a href="/docs" class="btn btn-secondary">API Docs</a>
             </div>
-        </div>
-    </header>
+        </section>
 
-    <div class="container">
-        <div class="main-content">
-            <div class="card" id="about">
-                <h2>About This Project</h2>
-                <p>This system analyzes Indian parliamentary proceedings using Natural Language Processing (NLP) to extract structured information from unstructured transcripts.</p>
-                
-                <p>The API processes parliamentary session documents (budget speeches, bill introductions, Q&A sessions, debates, ministerial statements) to provide:</p>
-                
-                <ul id="features" class="feature-list">
-                    <li>Speaker identification and role detection</li>
-                    <li>Topic modeling and segmentation</li>
-                    <li>Named entity recognition (people, places, schemes)</li>
-                    <li>Sentiment and stance analysis</li>
-                    <li>Automated summarization</li>
-                    <li>Interactive visualizations</li>
+        <section class="info-grid">
+            <article class="panel">
+                <h2>Current Scope</h2>
+                <ul>
+                    <li>Document upload for paragraph-wise ministry classification</li>
+                    <li>Asynchronous backend processing for long-running tasks</li>
+                    <li>Method-wise output map returned from classification pipeline</li>
                 </ul>
-                
-                <div class="api-endpoints">
-                    <h3>Quick API Endpoints</h3>
-                    <div class="endpoint" id="upload-endpoint" style="cursor: pointer;">
-                        <span class="method">POST</span>
-                        <strong>/upload</strong> - Upload parliamentary document
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>Quick Actions</h2>
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <a href="/docs" class="btn">📚 API Documentation</a>
-                    <a href="/redoc" class="btn btn-secondary">📖 ReDoc Documentation</a>
-                    <a href="/openapi.json" class="btn">📄 OpenAPI Schema</a>
-                    <a href="/upload" class="btn btn-secondary">📤 Upload Document</a>
-                </div>
-                
-                <h2 style="margin-top: 2rem;">Technology Stack</h2>
-                <div class="tech-stack">
-                    <span class="tech-badge">FastAPI</span>
-                    <span class="tech-badge">more coming soon...</span>
-                </div>
-            </div>
-        </div>
-        
-        <div id="team" class="card">
-            <h2>Team Members</h2>
-            <div class="team-section">
-                <div class="team-member">
-                    <h3>Devadatta Mahesh Pokharanakar</h3>
-                    <p>142502012</p>
-                </div>
-                <div class="team-member">
-                    <h3>Chilaka Sri Krishna Sai</h3>
-                    <p>142502010</p>
-                </div>
-                <div class="team-member">
-                    <h3>Vaddi Govardhan</h3>
-                    <p>142502032</p>
-                </div>
-            </div>
-        </div>
-    </div>
+            </article>
 
-    <footer>
-        <div class="container">
-            <p>Indian Parliamentary Proceedings NLP Analysis System</p>
-            <p>Academic Project • Natural Language Processing Course</p>
-            <p>Guided by Dr. Swapnil Hingmire | Assistant Professor, Data Science, IIT Palakkad</p>
-        </div>
-    </footer>
+            <article class="panel">
+                <h2>Methods Run Per Upload</h2>
+                <ul>
+                    <li>vocab</li>
+                    <li>doc_word_topic</li>
+                    <li>ministry_embedding</li>
+                    <li>ministry_embedding_v1</li>
+                    <li>ministry_embedding_v2</li>
+                    <li>ministry_embedding_multi</li>
+                    <li>topic_embedding</li>
+                </ul>
+            </article>
+        </section>
+    </main>
 </body>
 </html>

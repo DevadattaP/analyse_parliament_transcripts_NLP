@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Indian Parliamentary Proceedings NLP API",
-    description="API for analyzing Indian parliamentary proceedings using NLP",
+    title="Ministry Paragraph Classification API",
+    description="Upload a parliamentary PDF and run ministry classification per paragraph.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -48,19 +48,18 @@ if static_dir.exists():
 async def root():
     """Root endpoint with API information"""
     index_path = Path(__file__).parent / "static" / "index.html"
-    
-    if index_path.exists():
-        return FileResponse(index_path)
-    else:
-        return FileResponse(Path(__file__).parent / "static" / "index.html", 
-                          media_type="text/html")
+
+    if not index_path.exists():
+        return HTMLResponse(content="index.html was not found", status_code=404)
+
+    return FileResponse(index_path)
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "service": "parliament-nlp-api",
+        "service": "ministry-classification-api",
         "version": "1.0.0"
     }
 

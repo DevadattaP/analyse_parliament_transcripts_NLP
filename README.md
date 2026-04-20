@@ -128,16 +128,101 @@ The FastAPI server will start at <http://localhost:8000>
 
 API documentation is available at <http://localhost:8000/docs>
 
-## 📊 Expected Outputs
+## � How It Works
 
-- Structured JSON with paragraph-level ministry labels
-- Ministry frequency distribution
-- Speaker-wise ministry statistics
-- Time-based ministry coverage
-- Visual charts and summary reports
+### 1. Document Upload
+
+- Navigate to `/upload/` in your browser
+- Drag-and-drop a PDF file or click to browse and select a parliamentary PDF
+- Click **"Start Classification"** button
+- The file is uploaded to the backend and a unique task ID is generated immediately
+- The browser displays the task ID and begins polling for progress
+
+### 2. Backend Processing
+
+Once uploaded, the backend processes the document asynchronously:
+
+**Stage 1: Document Parsing**
+- Extract text from PDF and segment into paragraphs
+- Identify speaker names and roles
+- Clean and preprocess text (remove noise, normalize whitespace)
+
+**Stage 2: Paragraph Classification (7 Methods Run in Sequence)**
+Each paragraph is classified using all 7 methods:
+
+1. **vocab** - Keyword-based vocabulary matching
+2. **doc_word_topic** - Document-word-topic probabilistic classification
+3. **ministry_embedding** - Semantic similarity using embedding
+4. **ministry_embedding_v1** - Semantic similarity using embedding (full ministry -> one embedding)
+5. **ministry_embedding_v2** - Semantic similarity using embedding (average of all paragraph embeddings for ministry)
+6. **ministry_embedding_multi** - Multi-embedding aggregation (top-k similar paragraph embeddings for each ministry)
+7. **topic_embedding** - Topic-embeddings similarity and topic-ministry mapping
+
+For each method:
+- The paragraph is compared against official ministry profiles
+- A confidence distribution across all ministries is computed
+- The top ministry prediction and confidence score are recorded
+
+**Stage 3: Result Aggregation**
+- Results from all 7 methods are collected
+- Each result includes: paragraph ID, speaker, original & processed text, predicted ministry, and full confidence distribution across all ministries
+
+### 3. Real-Time Progress Display
+
+As methods execute in the backend:
+- Progress bar animates from 0% → 100%
+- Text shows "X/7 methods completed" updating every 2 seconds
+- When complete, the results panel appears
+
+### 4. Interactive Results Display
+
+**Results Table (Per Method):**
+- Click any method tab to view that method's results
+- Table columns: Paragraph ID | Text Preview | Predicted Ministry | Confidence
+- Shows first 100 paragraphs per method
+
+**Row Details Modal:**
+- Click on any row to open a detailed modal
+- Shows:
+  - Paragraph ID
+  - Speaker name
+  - Original paragraph text (unprocessed)
+  - Processed paragraph text (cleaned)
+  - Predicted ministry (from this method)
+  - All ministries ranked by confidence scores
+
+**Compare Button:**
+- Click "Compare" in the detail modal to open comparison view
+- Shows predictions from all 7 methods for the same paragraph
+- Displays:
+  - Paragraph ID, original text, processed text
+  - Method-wise predictions with confidence scores
+  - Side-by-side comparison of all 7 methods
+
+### 5. Output Structure
+
+Each result includes:
+
+```json
+{
+  "paragraph_id": 42,
+  "speaker": "Speaker Name",
+  "original_paragraph": "Raw text from PDF...",
+  "paragraph": "Cleaned and processed text...",
+  "predicted_ministry": "Ministry_of_Finance_MoF_",
+  "primary_distribution": {
+    "Ministry_of_Finance_MoF_": 0.8521,
+    "Ministry_of_Commerce_and_Industry_MoCI_": 0.0342,
+    "Ministry_of_Power_MoP_": 0.0198,
+    ...
+  }
+}
+```
+
+All results are returned as JSON and displayed in interactive tables in the browser.
 
 > [!NOTE]
-> For first time it may download the sentence-transformers model which can take some time.
+> For first time execution, the system will download the sentence-transformers model which can take some time. Subsequent uploads will be faster.
 
 ## 🤝 Contributing
 
