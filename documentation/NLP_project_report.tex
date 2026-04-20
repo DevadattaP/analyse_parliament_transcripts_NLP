@@ -2,7 +2,10 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{geometry}
+\usepackage{hyperref}
 \usepackage{url}
+\usepackage[backend=biber,style=numeric]{biblatex}
+\addbibresource{report-references.bib}
 \usepackage{graphicx}
 \usepackage{subcaption}
 \usepackage{float}
@@ -27,11 +30,13 @@
 \date{\today}
 
 \maketitle
+\tableofcontents
+\newpage
 
 \section{Introduction}
-Parliamentary proceedings in India, such as Lok Sabha and Rajya Sabha debates, budget speeches, and question–answer sessions, are rich sources of policy, governance, and socio-economic discussions. However, these documents are typically released as long, unstructured PDF files, making it difficult to quickly extract structured insights such as which ministry is being discussed, what topics are being addressed, and how discussions evolve across time.
+Parliamentary proceedings in India, such as Lok Sabha and Rajya Sabha debates, budget speeches, and question–answer sessions, are rich sources of policy, governance, and socio-economic discussions. However, these documents are typically released as long, unstructured PDF files, making it difficult to quickly extract structured insights such as which ministry is being discussed, what topics are being addressed, and how discussions evolve across time\cite{Katre2019}\cite{Rohit2018}.
 
-Recent government initiatives such as the Sansad Bhashini project highlight the growing importance of applying Natural Language Processing (NLP) techniques to parliamentary data for improving accessibility, searchability, and real-time analysis. Inspired by this direction, our project focuses on a fundamental sub-task in this pipeline: identifying the relevant ministry for a given paragraph of parliamentary text, even when the ministry name is not explicitly mentioned.
+Recent government initiatives such as the Sansad Bhashini project (See Appendix~\ref{appendix:sansad-bhashini}) highlight the growing importance of applying Natural Language Processing (NLP) techniques to parliamentary data for improving accessibility, searchability, and real-time analysis. Inspired by this direction, our project focuses on a fundamental sub-task in this pipeline: identifying the relevant ministry for a given paragraph of parliamentary text, even when the ministry name is not explicitly mentioned.
 
 \subsection{Problem Context and Key Challenge}
 A major challenge in this domain is the absence of annotated (gold-standard) datasets. Unlike standard NLP classification tasks, where labeled training and evaluation data are available, parliamentary transcripts are largely unlabeled and noisy. Creating high-quality annotations requires domain expertise and significant manual effort, which is beyond the scope of this project.
@@ -108,7 +113,7 @@ Since true labels are unavailable, standard evaluation metrics such as accuracy,
 
 Instead, we adopt an alternative evaluation strategy:
 \begin{itemize}
-    \item Use LLM-generated labels (ChatGPT) as a weak reference signal (for few test documents)
+    \item Use LLM-generated labels (ChatGPT) as a weak reference signal (for few test documents) (Refer to Appendix~\ref{appendix:chatgpt})
     \item Compare multiple unsupervised methods against each other
     \item Analyze:
         \begin{itemize}
@@ -123,7 +128,15 @@ This allows us to answer: \textit{In the absence of ground truth, which methods 
 
 \section{Data and Preprocessing}
 \subsection{Data Source}
-The dataset used in this project consists of parliamentary transcripts and proceedings obtained from the official Parliament of India website. These include multiple document types such as: Debate transcripts, Budget speeches, Question–Answer (Q\&A) sessions, Prime Minister and ministerial speeches. Each of these document types follows a distinct but well-defined structural format, which can be leveraged during preprocessing.
+The dataset used in this project consists of parliamentary transcripts and proceedings obtained from the official Parliament of India website. These include multiple document types such as: Debate transcripts, Budget speeches, Question–Answer (Q\&A) sessions, Prime Minister and ministerial speeches. Each of these document types follows a distinct but well-defined structural format, which can be leveraged during preprocessing. See Appendix~\ref{appendix:parliament-transcripts} for links to the official parliament e-library.
+
+The ministry knowledge base was constructed using multiple sources, including:
+\begin{itemize}[leftmargin=+.5in]
+    \item Wikipedia articles about each ministry
+    \item Official government websites describing ministry functions
+    \item LLM-generated descriptions
+\end{itemize}
+Total 53 ministries were identified, each with a corresponding text description that serves as its knowledge base. These descriptions vary in length and detail, but generally provide an overview of the ministry's responsibilities and focus areas.
 
 \subsection{Challenges in Raw Data}
 Despite being structured at a high level, the raw data presents several challenges:
@@ -139,7 +152,7 @@ Despite being structured at a high level, the raw data presents several challeng
 Before processing, each document is validated to ensure relevance and consistency:
 \begin{enumerate}
     \item  Only English documents are retained for analysis.
-    \item Documents are checked against a parliamentary vocabulary list to ensure they are relevant to parliamentary proceedings.
+    \item Documents are checked against a parliamentary vocabulary list (See Appendix~\ref{appendix:parliamentary-terms}) to ensure they are relevant to parliamentary proceedings.
     \item Based on structural cues, documents are categorized into types (e.g., debate, budget, Q\&A), enabling type-specific parsing.
 \end{enumerate}
 
@@ -152,6 +165,7 @@ Given that each document type follows a predictable format, we apply rule-based 
     \item When available, timestamps are identified and associated with segments.
     \item Then the text is further divided into paragraphs.
 \end{itemize}
+Refer to ``Words and Tokens" from Appendix \ref{appendix:jurafsky}
 
 \subsection{Text Cleaning}
 Each paragraph undergoes standard normalization steps:
@@ -166,8 +180,8 @@ Each paragraph undergoes standard normalization steps:
 To improve downstream tasks, we remove stopwords using a combined stopword set consisting of:
 \begin{itemize}
     \item Standard English stopwords
-    \item Domain-specific stopwords (common parliamentary terms)
-    \item Additional stopwords identified during topic modeling (using David Mimno’s online tool)
+    \item Domain-specific stopwords (common parliamentary terms) (Refer to Appendix~\ref{appendix:parliamentary-stopwords})
+    \item Additional stopwords identified during topic modeling (Refer to Appendix~\ref{appendix:topic-modeling})
 \end{itemize}
 
 \section{Methods applied}
@@ -175,13 +189,13 @@ To improve downstream tasks, we remove stopwords using a combined stopword set c
 Approach: For each ministry, we built a bag-of-words vocabulary of the top 100 words by term frequency–inverse document frequency (TF-IDF) from its knowledge base. Given an input paragraph, we count how many of its words appear in each ministry's top-100 list, normalize by paragraph length, and interpret these normalized counts as ``probabilities" for each ministry. We then pick the ministry with the highest score.
 
 \begin{itemize}
-    \item \textbf{Key Assumptions:} We assume bag-of-words (BoW) – i.e. word order and syntax are ignored. We further assume that the most frequent distinctive words capture the essence of each ministry. Implicitly we assume word independence: each word's contribution to a score is separate and we simply sum counts (linear additivity). This method also assumes each ministry's vocabulary is sufficiently distinct in its key terms.
+    \item \textbf{Key Assumptions:} We assume bag-of-words (BoW) – i.e. word order and syntax are ignored. We further assume that the most frequent distinctive words capture the essence of each ministry. Implicitly we assume word independence\cite{Robertson2004}: each word's contribution to a score is separate and we simply sum counts (linear additivity). This method also assumes each ministry's vocabulary is sufficiently distinct in its key terms.
     \item \textbf{Strengths:} Simple and interpretable. TF-IDF weighting helps highlight words that are frequent in one ministry but rare in others, and cosine-similarity or counting can then identify overlaps. In scenarios where classes have distinctive keywords, TF-IDF methods often perform extremely well. For example, if the Agriculture ministry uses terms like ``fertilizer" or ``crop" often, those terms strongly indicate that class.
     \item \textbf{Limitations:} Ignores word semantics and context: synonyms or related phrases not in the top-vocabulary lists are missed. BoW ignores grammar and word order; thus any nuance beyond word frequency is lost. If paragraphs use uncommon words or new terminology not in the predefined lists, the method fails. It also assumes equal prior probability for each word (no notion of importance beyond TF-IDF rank) and does not handle polysemy (one word belonging to multiple topics) well. In practice, TF-IDF works best for short, focused text with clear keyword signals, and poorly when language is more nuanced or overlapping between ministries.
 \end{itemize}
 
 \subsection{Ministry Embedding (Whole-Document Encoding, Basic)}
-Approach: We concatenated all paragraphs of a ministry into one large text (with minimal preprocessing) and fed it into the all-MiniLM-L6-v2 sentence-transformer model, obtaining a single 384-dimensional embedding vector per ministry. Given a new paragraph, we compute its 384-d vector and compute cosine similarity with each ministry vector. The ministry with the highest cosine similarity is chosen.
+Approach: We concatenated all paragraphs of a ministry into one large text (with minimal preprocessing) and fed it into the all-MiniLM-L6-v2 sentence-transformer model (See Appendix \ref{appendix:sentence-transformer}), obtaining a single 384-dimensional embedding vector per ministry. Given a new paragraph, we compute its 384-d vector and compute cosine similarity with each ministry vector. The ministry with the highest cosine similarity is chosen.
 
 \begin{itemize}
     \item \textbf{Key Assumptions:} The entire text of a ministry can be represented by one fixed-length embedding. Implicitly assumes the embedding model can summarize a long document into its 256-token limit (the model truncates inputs longer than 256 word pieces). We rely on semantic similarity of these vectors to indicate class. We also assume the model captures the relevant concepts of the ministry despite mixing potentially diverse topics together. Furthermore, we assume that vector closeness (cosine) correlates with shared ministry labels.
@@ -232,7 +246,7 @@ Approach: We precomputed and stored the 384-d embedding of each paragraph in eve
 \end{itemize}
 
 \subsection{Topic-Embedding Classification}
-Instead of training a local topic model, we used the online tool by \textit{David Mimno} to perform topic modeling on the corpus. This tool provides set number of topics, top representative words for each topic, document–word–topic state over complete vocabulary, stopwords, and topic coherence scores, etc.
+Instead of training a local topic model, we used the online tool by \textit{David Mimno}~\ref{appendix:topic-modeling} to perform topic modeling on the corpus. This tool provided us 25 topics, top representative words for each topic, document–word–topic state over complete vocabulary, stopwords, and topic coherence scores, etc.
 
 From the generated topics, we extracted the top 10 words per topic, which serve as a compact representation of the topic. Each topic was then converted into a textual form (concatenation of top words) and embedded into a 384-dimensional vector using the sentence transformer model.
 
@@ -273,6 +287,8 @@ Intuitively, for each word $w$ in the paragraph and each topic $t$, we multiply 
     \item \textbf{Key Assumptions:} Many strong assumptions are involved (as in any Bayes-like model). We assume bag-of-words: words in the paragraph are independent and orderless. We assume topic mediation: a given word's relation to a document is mediated by topics. We assume a fixed, known topic space (the number of topics is pre-set). We also make a frequency $\approx$ probability assumption: raw word and topic frequencies approximate true probabilities. We sum contributions linearly (additivity), implicitly treating words and topics equally ("equal word importance"). We implicitly assume equal priors for ministries (since we didn't include a prior $P(d)$ term). We also assume same word may contribute to multiple topics.
     \item \textbf{Why Pure Bayes Fails:} A pure Bayesian approach (naive Bayes) would try to compute 
     $$P(d\mid\text{par})\propto P(\text{par}\mid d),P(d)$$
+    Refer to ``Naive Bayes Classification" from Appendix \ref{appendix:jurafsky}
+
     But $P(\text{par}\mid d)$ requires assuming conditional independence of words given $d$ – an assumption that rarely holds in real text. Likewise, one could try a hierarchical model $P(d\mid w,t)$ etc., but the factors $P(d\mid t,w)$, $P(t\mid w,d)$ etc. are not tractable, so we simplify. We also lack true priors $P(d)$ for ministries. In short, the dependencies between $d$, $t$, and $w$ are complex and violate naive independence assumptions, so we use this heuristic formula instead. We treat $P(d\mid w)$ and $P(d\mid t)$ as if $w$ and $t$ independently indicate $d$, which is an approximation.
     \item \textbf{Strengths:} Combines corpus statistics and topic structure in a unified score. It accounts for words that strongly indicate a ministry via topics. In practice, this method outperformed a naive TF-IDF word-count approach because it uses topic information to weight words. It is more principled than raw counting but simpler than a full generative model.
     \item \textbf{Limitations:} The many assumptions may not hold. Summing probabilities linearly is not theoretically justified by Bayes' rule, and we ignore word co-occurrence. Words common to multiple topics dilute their signal, and common words get too much weight unless explicitly downweighted. The quality depends on the topic model: poor topics lead to poor $P(t|w)$ estimates. In practice, we found it better than plain TF-IDF but still brittle: e.g., if a key word in a paragraph has low $P(d|w)$ for all ministries (say, an out-of-vocabulary term), it contributes almost nothing. On the other hand, if a topic is broad, it may give many words small contributions.
@@ -305,23 +321,17 @@ Intuitively, for each word $w$ in the paragraph and each topic $t$, we multiply 
     \item \textbf{Ministry Embedding 3 (Top-5):} This shines when a test paragraph very closely matches certain niche parts of a ministry's content. For example, if a small subsection of a ministry document has a unique topic (say, cyber-security in the Home ministry), and the paragraph is on that topic, the top-5 method will likely pick up those nearest neighbors. It fails if the ministry's paragraphs are all equally dissimilar – then no strong neighbors exist. Also, if a paragraph is a mix of topics, selecting single neighbors could be inconsistent.
     \item \textbf{Topic Embedding:} This method is best if the topics align well with ministries. For instance, if one topic is clearly ``agriculture" (words like farm, crop, harvest) and only the Agriculture ministry texts heavily feature that topic, then paragraphs about farming will be classified correctly even if they lack specific ministry keywords. It fails if topics are too broad or unrelated to ministries (e.g. a topic about geography that appears in multiple ministries, or a topic mixing environment and health). Also, short paragraphs may not strongly activate any topic.
     \item \textbf{Doc-Word-Topic Scoring:} This did better than raw word counts because it uses topic weights. It works when paragraph words strongly indicate a specific ministry via topics. It fails if words are ambiguous or uniformly common. For example, if every ministry uses the word ``development" in some context, $P(d|w)$ is spread out, yielding weak signals. Words not in the topic model (rare words) get no score.
-    \item \textbf{Naive Bayes:} Tends to work reasonably when many words in a paragraph are clearly associated with one ministry. It fails badly if paragraphs are short (so the product of probabilities is very small) or if words have correlated presence (violating independence). In high-dimensional text data, Naive Bayes is known to be often dominated by more nuanced models.
+    \item \textbf{Naive Bayes:} Tends to work reasonably when many words in a paragraph are clearly associated with one ministry. It fails badly if paragraphs are short (so the product of probabilities is very small) or if words have correlated presence (violating independence)\cite{Rennie2003}. In high-dimensional text data, Naive Bayes is known to be often dominated by more nuanced models.
 \end{itemize}
 
 \section{Embedding Dimensions and Clustering}
-In this project, we represent textual data using the all-MiniLM-L6-v2 sentence transformer model, which generates a 384-dimensional dense vector for any input text. These embeddings are expected to capture semantic similarity between paragraphs and ministry descriptions, enabling classification through cosine similarity.
+In this project, we represent textual data using the all-MiniLM-L6-v2 sentence transformer model, which generates a 384-dimensional dense vector for any input text. These embeddings are expected to capture semantic similarity between paragraphs and ministry descriptions, enabling classification through cosine similarity. Refer to ``Embeddings" from Appendix \ref{appendix:jurafsky}, and Appendix \ref{appendix:embeddings}.
 
 \subsection{Challenges with Embedding Representation}
 While embedding-based methods are theoretically powerful, we observed several practical limitations in our setting:
 \begin{enumerate}
     \item \textbf{High Semantic Overlap in Knowledge Base}\\
-        The ministry knowledge base was constructed using multiple sources, including:
-        \begin{itemize}
-            \item Wikipedia articles about each ministry
-            \item Official government websites describing ministry functions
-            \item LLM-generated descriptions
-        \end{itemize}
-        As a result, many ministries share common vocabulary and overlapping semantic content. For example:
+        Because of multiple sources of ministry knowledge base, many ministries share common vocabulary and overlapping semantic content. For example:
         \begin{itemize}
             \item Agriculture, Food Processing, and Rural Development
             \item Health and AYUSH
@@ -477,7 +487,7 @@ Due to the absence of annotated ground truth, we adopted an alternative evaluati
     \caption{Evaluation results across methods (comparing with reference labels from ChatGPT)}
 \end{figure}
 
-Embedding-based approaches significantly outperform vocabulary and probabilistic methods in exact classification. In particular, ministry\_embedding\_v2 (paragraph-level averaging) achieves the best balance between representation and generalization.
+Embedding-based approaches significantly outperform vocabulary and probabilistic methods in exact classification (Also see Appendix~\ref{appendix:comparison}). In particular, ministry\_embedding\_v2 (paragraph-level averaging) achieves the best balance between representation and generalization.
 
 Embedding-based methods capture semantic proximity, allowing correct ministries to appear in top-k predictions even when not ranked first. This reflects soft semantic matching rather than strict classification.
 
@@ -563,5 +573,33 @@ An important insight is that exact classification is often not meaningful in thi
 
 \end{enumerate}
 
-% add linked for the data and tools used, and the references
+\renewcommand{\bibname}{References}
+\printbibliography
+\addcontentsline{toc}{section}{References}
+
+\appendix
+\chapter{Links}
+\begin{enumerate}
+    \item \textbf{Sansad Bhashini Initiative:}\label{appendix:sansad-bhashini}\\ \url{https://www.pib.gov.in/PressReleasePage.aspx?PRID=2112542}
+    \item \textbf{Parliamentary Transcripts Data:}\label{appendix:parliament-transcripts} 
+        \begin{enumerate}
+            \item \url{https://eparlib.sansad.in/}
+            \item \url{https://elibrary.sansad.in/}
+        \end{enumerate}
+    \item \textbf{Important Parliamentary terms}\label{appendix:parliamentary-terms} used to create vocab for document validation:
+        \begin{enumerate}
+            \item \url{https://sansad.in/ls/en/about/important-parliamentary-terms}
+            \item \url{https://cms.rajyasabha.nic.in/documents/ImportantParliament/1614011758631.12_important_partliament_term.pdf}
+        \end{enumerate}
+    \item \textbf{Parliamentary Stopwords:}\label{appendix:parliamentary-stopwords} \url{https://github.com/ajdapretnar/parliamentary-stopwords/blob/master/GBparl_stopwords-empirical.txt}
+    \item \textbf{Sentence Transformer from Hugging Face:}\label{appendix:sentence-transformer}\\ \url{https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2}
+    \item \textbf{jsLDA: In-browser topic modeling - David Mimno:}\label{appendix:topic-modeling} \url{https://mimno.infosci.cornell.edu/jsLDA/}
+    \item Comparison of BoW, TF-IDF, and Embedding Methods\label{appendix:comparison}: \url{https://machinelearningmastery.com/llm-embeddings-vs-tf-idf-vs-bag-of-words-which-works-better-in-scikit-learn/}
+    \item Speech and Language Processing - Dan Jurafsky and James H. Martin:\label{appendix:jurafsky} \url{https://web.stanford.edu/~jurafsky/slp3/}
+    \item Essays on Understanding Analogies and Associations in Word Embedding Spaces - Kawin Ethayarajh:\label{appendix:embeddings} \url{https://www.cs.toronto.edu/pub/gh/HIDDEN-Ethayarajh-MSc-2019.pdf}
+    \item F. Gilardi,M. Alizadeh, \& M. Kubli,  ChatGPT outperforms crowd workers for text-annotation tasks, Proc. Natl. Acad. Sci. U.S.A. 120 (30) e2305016120, \url{https://doi.org/10.1073/pnas.2305016120} (2023)\label{appendix:chatgpt}.
+    \item \textbf{Our GitHub Repo:}\label{appendix:github-repo} \url{https://github.com/DevadattaP/analyse_parliament_transcripts_NLP}
+
+\end{enumerate}
+
 \end{document}

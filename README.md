@@ -81,7 +81,7 @@ parliament-nlp-analysis/
 │   ├── vocabulary/        # Building parliamentary vocabulary
 │   └── api/               # FastAPI service
 ├── notebooks/             # Experiments and analysis
-├── models/                # Saved embeddings and classifiers
+├── models/                # Saved transformer model
 ├── requirements.txt
 ├── config.yaml
 ├── .gitignore

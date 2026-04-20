@@ -5,3 +5,4 @@ models/
 documentation/*
 !documentation/*.pdf
 !documentation/*.tex
+!documentation/*.bib
