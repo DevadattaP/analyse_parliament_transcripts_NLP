@@ -1,0 +1,335 @@
+\documentclass{beamer}
+
+\usetheme{metropolis} 
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array} 
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X} 
+\usepackage{caption} 
+% font=scriptsize makes the text smaller (you can also use 'tiny') 
+% skip=2pt reduces the vertical space between the image and caption 
+\captionsetup{font=scriptsize, labelfont=scriptsize, skip=2pt}
+
+\title{Classifying Parliamentary Text into Ministries}
+\subtitle{A Study of Representation Methods \\ [1em] DS5601: Natural Language Processing}
+\author{142502012 --- Devadatta Mahesh Pokharanakar \\ 142502010 --- Chilaka Sri Krishna Sai \\ 142502032 --- Vaddi Govardhan}
+\institute{Department of Data Science \\ IIT Palakkad}
+\date{\today}
+
+\begin{document}
+
+% Title Slide
+\maketitle
+
+% Slide 1
+\begin{frame}{Problem Motivation}
+\begin{itemize}
+    \item Parliamentary proceedings are released as long, unstructured documents.
+    \item Important information (topics, ministries) is not explicitly labeled.
+    
+    \item \textbf{Goal:} Identify which ministry a paragraph belongs to.
+    
+    \item \textbf{Key Challenge:}
+    \begin{itemize}
+        \item No annotated dataset
+        \item High domain complexity
+    \end{itemize}
+    
+    \item \textbf{Core Idea:} 
+    \begin{itemize}
+        \item Explore different paradigms of text representation
+        \item Evaluate methods without relying on gold labels
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+% Slide 2
+\begin{frame}{Data and Setup}
+\begin{itemize}
+    \item \textbf{Data:}
+    \begin{itemize}
+        \item Parliamentary transcripts (debates, budget speeches, Q\&A)
+        \item 53 ministry knowledge bases (Wikipedia + Govt + LLM summaries)
+    \end{itemize}
+    
+    \item \textbf{Processing:}
+    \begin{itemize}
+        \item Speaker-wise and paragraph-level segmentation
+        \item Cleaning + domain-specific stopwords
+    \end{itemize}
+    
+    \item \textbf{Evaluation:}
+    \begin{itemize}
+        \item No ground truth labels
+        \item Weak supervision using LLM + cross-method comparison
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+% Slide 3
+\begin{frame}{Topic Modeling (Supporting Structure)}
+\begin{itemize}
+    \item Topic modeling performed using \textbf{David Mimno’s online tool} \small \url{https://mimno.infosci.cornell.edu/jsLDA/}
+    
+    \item \textbf{Outputs obtained:}
+    \begin{itemize}
+        \item 25 topics over the full corpus
+        \item Top 10 representative words per topic
+        \item Document--Word--Topic state distributions
+        \item Automatically generated domain-specific stopwords
+    \end{itemize}
+\end{itemize}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/word-topic-doc.png}
+    \vspace{-0.5em}
+    \caption{Example of word--topic and word--document relationships}
+\end{figure}
+\end{frame}
+
+% Slide 4
+\begin{frame}{Three Ways to Represent Text}
+\centering
+\begin{tabular}{@{} l l @{}}
+\toprule
+\textbf{Method} & \textbf{Core Idea} \\
+\midrule
+Lexical (TF-IDF) & Meaning = Words \\
+Probabilistic & Words $\rightarrow$ Topics $\rightarrow$ Ministries \\
+Embedding-based & Meaning = Vector similarity \\
+\bottomrule
+\end{tabular}
+
+\vspace{1em}
+
+\textbf{Research Question:}  
+Which representation works best when no labels are available?
+\end{frame}
+
+% Slide 5
+\begin{frame}{Method 1: Lexical (TF-IDF)}
+\textbf{Idea:} Match paragraph words with ministry-specific vocabulary
+
+\vspace{0.5em}
+
+\textbf{Assumption:}
+\begin{itemize}
+    \item Words directly indicate meaning
+\end{itemize}
+
+\textbf{Works well when:}
+\begin{itemize}
+    \item Distinct domain keywords exist (e.g., ``fertilizer'', ``crop'')
+\end{itemize}
+
+\textbf{Fails when:}
+\begin{itemize}
+    \item Synonyms are used (``budget'' vs ``fiscal policy'')
+    \item Vocabulary overlaps across ministries
+\end{itemize}
+
+\vspace{0.5em}
+\textbf{Insight:} Parliamentary language is not discriminative enough for pure keyword methods.
+\end{frame}
+
+% Slide 6
+\begin{frame}{Method 2: Probabilistic (Doc-Word-Topic)}
+\textbf{Idea:} Words $\rightarrow$ Topics $\rightarrow$ Ministries
+
+$Score(d) = \sum_{w} \sum_{t} P(d|w)\cdot P(t|w)\cdot P(d|t)$
+
+\textbf{Assumptions:}
+\begin{itemize}
+    \item Words are independent
+    \item Topics explain word usage
+    \item Frequencies approximate probabilities
+\end{itemize}
+
+\textbf{Strength:} Combines corpus statistics with structure
+
+\textbf{Fails because:}
+\begin{itemize}
+    \item Independence assumption is violated
+    \item Topics overlap across ministries
+\end{itemize}
+
+\textbf{Insight:} Real language does not follow clean probabilistic assumptions.
+\end{frame}
+
+% Slide 7
+\begin{frame}{Method 3: Embedding-Based}
+\textbf{Idea:} Represent text as vectors and compare using similarity
+
+\textbf{Variants:}
+\begin{itemize}
+    \item Whole-document embedding (loses detail)
+    \item Mean of paragraph embeddings (\textbf{best})
+    \item Top-K similar paragraphs (captures local similarity)
+\end{itemize}
+
+\textbf{Why it works:}
+\begin{itemize}
+    \item Captures semantic meaning beyond keywords
+    \item Handles synonyms and paraphrases
+\end{itemize}
+
+\textbf{Limitations:}
+\begin{itemize}
+    \item Sensitive to representation design
+    \item Can blur multiple topics
+\end{itemize}
+\end{frame}
+
+% Slide 8
+\begin{frame}{Embedding Space Visualization}
+\begin{columns}
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{images/tsne-embed.png}
+            \caption{t-SNE projection}
+        \end{figure}
+    \end{column}
+    
+    \begin{column}{0.5\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{images/pca-embed.png}
+            \caption{PCA projection}
+        \end{figure}
+    \end{column}
+\end{columns}
+
+\textbf{Observations:}
+\begin{itemize}
+    \item Some ministries form clear clusters
+    \item Significant overlap exists between related ministries
+\end{itemize}
+\end{frame}
+
+% Slide 9
+\begin{frame}{Clustering Ministries}
+\begin{itemize}
+    \item Observed weak separation (low silhouette scores) for hard clustering
+    \item Adopted \textbf{consensus-based clustering}: Group ministries based on stable co-occurrence patterns
+\end{itemize}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/cluster-formation.png}
+    \caption{\scriptsize Consensus-based grouping of ministries}
+\end{figure}
+
+\vspace{0.3em}
+
+\textbf{Insight:} Ministries form soft clusters rather than clearly separable classes.
+\end{frame}
+
+% Slide 10
+\begin{frame}{Comparison with Weak Supervision (ChatGPT Labels)}
+\vspace{0.5em}
+\begin{columns}
+    \begin{column}{0.33\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{images/exact-match.png}
+            \caption{Exact Match}
+        \end{figure}
+    \end{column}
+    
+    \begin{column}{0.33\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{images/topk-errors.png}
+            \caption{Top-K Errors}
+        \end{figure}
+    \end{column}
+    
+    \begin{column}{0.33\textwidth}
+        \begin{figure}
+            \centering
+            \includegraphics[width=\textwidth]{images/cluster-match.png}
+            \caption{Cluster Match}
+        \end{figure}
+    \end{column}
+\end{columns}
+
+\textbf{Observations:}
+\begin{itemize}
+    \item Embedding methods show higher consistency across metrics
+    \item Probabilistic method improves over lexical baseline
+    \item Exact match is low, but cluster-level agreement is higher
+\end{itemize}
+
+\textbf{Insight:} In absence of ground truth, consistency across views is more meaningful than raw accuracy.
+\end{frame}
+
+% Slide 11
+\begin{frame}{Results and Key Observations}
+\begin{itemize}
+    \item Embedding-based methods outperform lexical approaches
+    \item Probabilistic method improves over simple keyword matching
+    \item Best performance: \textbf{paragraph-level embedding averaging}
+\end{itemize}
+
+\vspace{0.5em}
+
+\textbf{Important Observation:}
+\begin{itemize}
+    \item No method is perfectly correct
+    \item Some methods are more \textbf{consistent} than others
+\end{itemize}
+
+\vspace{0.5em}
+
+\textbf{Reason:}
+\begin{itemize}
+    \item High semantic overlap between ministries
+\end{itemize}
+\end{frame}
+
+% Slide 12
+\begin{frame}{Conclusion and Takeaways}
+\begin{itemize}
+    \item Ministry classification is fundamentally a \textbf{representation problem}
+    
+    \item \textbf{Lexical methods:}
+    \begin{itemize}
+        \item Fail due to vocabulary overlap and lack of context
+    \end{itemize}
+    
+    \item \textbf{Probabilistic methods:}
+    \begin{itemize}
+        \item Limited by unrealistic independence and topic assumptions
+    \end{itemize}
+    
+    \item \textbf{Embedding methods:}
+    \begin{itemize}
+        \item Capture semantics effectively
+        \item Performance depends on representation design (granularity)
+    \end{itemize}
+\end{itemize}
+
+\vspace{1em}
+
+\textbf{Key Insight:} \centering Better models did not solve the problem \\ --- better representations did.
+\end{frame}
+
+% Slide 13
+\begin{frame}
+\centering
+\Huge Thank You
+
+\vspace{1em}
+
+\Large Questions?
+
+\vfill
+
+\scriptsize Project Repository: \\ \url{https://github.com/DevadattaP/analyse_parliament_transcripts_NLP}
+\end{frame}
+
+\end{document}
