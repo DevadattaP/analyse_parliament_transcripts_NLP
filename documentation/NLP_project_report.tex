@@ -27,7 +27,7 @@
     [2ex] Department of Data Science, IIT Palakkad
 }
 
-\date{\today}
+\date{April 21, 2026}
 
 \maketitle
 \tableofcontents
@@ -212,7 +212,7 @@ Approach: Same as Method 2, but with more thorough text preprocessing: we remove
     \item \textbf{Limitations:} Sentence-transformers are often robust to stopwords anyway, so heavy cleaning might remove subtle contextual clues that the model would normally use. Over-cleaning can also distort meaning (for instance, stemming can merge distinct terms). Overall, results were similar to Method 2, suggesting that model embeddings already downweight irrelevant words to some extent.
 \end{itemize}
 
-\subsection{Ministry Embedding 2 (Average of Paragraph Embeddings)}
+\subsection{Ministry Embedding 2 (Average of Paragraph Embeddings)}\label{embed-avg}
 Approach: Instead of one vector per entire ministry, we computed a 384-d embedding for each paragraph in a ministry (using all-MiniLM-L6-v2), and then took the element-wise average of those vectors. This produces one ``mean" vector per ministry. Classification is again by cosine similarity of a paragraph to each ministry's average vector.
 
 \begin{itemize}
@@ -285,6 +285,7 @@ Intuitively, for each word $w$ in the paragraph and each topic $t$, we multiply 
 
 \begin{itemize}
     \item \textbf{Key Assumptions:} Many strong assumptions are involved (as in any Bayes-like model). We assume bag-of-words: words in the paragraph are independent and orderless. We assume topic mediation: a given word's relation to a document is mediated by topics. We assume a fixed, known topic space (the number of topics is pre-set). We also make a frequency $\approx$ probability assumption: raw word and topic frequencies approximate true probabilities. We sum contributions linearly (additivity), implicitly treating words and topics equally ("equal word importance"). We implicitly assume equal priors for ministries (since we didn't include a prior $P(d)$ term). We also assume same word may contribute to multiple topics.
+        \begin{itemize} \item We use $P(t \mid w)$ because our task is diagnostic (inference from observed words) rather than generative (sampling words from topics). In our setting, we start from an observed word $w$ in a paragraph and want to estimate how it contributes to different candidate ministries through latent topics. Therefore, we require a distribution over topics conditioned on the observed word, i.e., $P(t\mid w)$, which answers the question- \textit{Given this word, which topics is it most associated with?}. This aligns naturally with our scoring pipeline: $w \rightarrow t \rightarrow d$. Using $P(w \mid t)$ would require additional normalization (e.g., via Bayes' rule) to convert it into $P(t \mid w)$, introducing a dependence on the marginal word probability $P(w)$, which is difficult to estimate reliably in our setting.\end{itemize}
     \item \textbf{Why Pure Bayes Fails:} A pure Bayesian approach (naive Bayes) would try to compute 
     $$P(d\mid\text{par})\propto P(\text{par}\mid d),P(d)$$
     Refer to ``Naive Bayes Classification" from Appendix \ref{appendix:jurafsky}
@@ -351,7 +352,7 @@ While embedding-based methods are theoretically powerful, we observed several pr
             \item It is unclear whether this dimensionality is sufficient to distinguish fine-grained ministry differences
             \item At the same time, increasing dimensionality may not necessarily improve separability without better training data
         \end{itemize}
-        Even when visualized using dimensionality reduction techniques such as PCA and t-SNE, some separation between ministry clusters is visible, but not strong enough for reliable classification.
+        Even when visualized using dimensionality reduction techniques such as PCA and t-SNE, some separation between ministry clusters is visible, but not strong enough for reliable classification. We observed that the first two principal components (in PCA) explain only around 20\% of the total variance. Increasing the number of components improves coverage: the first 10 components explain approximately 60\% of the variance, while 20 components explain about 80\%. This indicates that the embedding space is highly distributed, with meaningful information spread across many dimensions. As a result, low-dimensional projections (such as 2D visualizations using PCA or t-SNE) capture only a limited portion of the underlying structure, and should be interpreted cautiously. This also supports our use of averaging in the full 384-dimensional space (Method ~\ref{embed-avg}), as reducing dimensionality too aggressively would lead to significant information loss.
 \end{enumerate}
 
 \subsection{Motivation for Clustering Ministries}
@@ -453,16 +454,30 @@ This allows us to:
 Due to the absence of annotated ground truth, we adopted an alternative evaluation strategy:
 \begin{itemize}
     \item A sample parliamentary document was selected and split into paragraphs
-    \item Each paragraph was labeled using an LLM (ChatGPT), serving as a reference signal
+    \item We treat the LLM-generated labels as a weak reference signal rather than absolute truth. We assume that, under controlled prompting, the LLM can provide reasonably consistent and contextually relevant labels for comparison purposes.
+
+        To improve reliability and reduce bias:
+        \begin{itemize}
+            \item Each labeling was performed in a fresh session without prior conversational memory
+            \item The model was provided only with the ministry knowledge base (descriptions of all 53 ministries)
+            \item The input paragraph was then classified into one of these ministries using a fixed prompt
+        \end{itemize}
+
+        This setup ensures that the labeling process is self-contained and does not depend on prior context, while remaining consistent across all evaluated samples. However, we acknowledge that these labels are not guaranteed to be correct, and are used only as an approximate benchmark for comparative evaluation.
     \item All proposed methods were applied to the same dataset
     \item Predictions were compared against reference labels using:
         \begin{itemize}
             \item Exact match count
-            \item Top-k error counts (k = 2, 3, 4, 5)
-            \item Cluster-level matches
-            \item Topic-family matches
+            \item Top-k error counts (k = 2, 3, 4, 5): whether the correct (reference) ministry appears within the top-k predicted ministries for a given paragraph.
+        
+            \item Cluster-level matches: evaluate whether the predicted and reference ministries belong to the same cluster of semantically similar ministries. 
+                
+            \item Topic-family matches: assess whether both belong to a broader thematic category derived from topic modeling.
         \end{itemize}
-\end{itemize}
+    \end{itemize}
+This evaluation framework focuses on relative consistency and agreement across methods, rather than absolute correctness.
+
+We repeated this process for multiple documents (10 parliamentary transcript documents from various session types, with on an average of approximately 150 paragraphs each), and observed similar trends across them, indicating the robustness of our findings.
 
 \subsection{Observations}
 \begin{figure}[H]
